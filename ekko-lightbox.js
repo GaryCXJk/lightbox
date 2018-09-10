@@ -26,7 +26,33 @@ const Lightbox = (($) => {
 		onHide() {},
 		onHidden() {},
 		onNavigate() {},
-		onContentLoaded() {}
+		onContentLoaded() {},
+        detectType: {
+            image: string => string && string.match(/(^data:image\/.*,)|(\.(jp(e|g|eg)|gif|png|bmp|webp|svg)((\?|#).*)?$)/i),
+            youtube: string => string && string.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i),
+            vimeo: string => string && string.match(/(?:www\.)?vimeo\.com\/(?:clip:)?(\d+)/i),
+            instagram: string => string && string.indexOf('instagram') > 0 ? string : false,
+            media: string => string && string.match(/(\.(mp3|mp4|ogg|webm|wav)((\?|#).*)?$)/i)
+        },
+        renderType: {
+            image(currentRemote, $toUse) {
+                this._preloadImage(currentRemote, $toUse)
+                this._preloadImageByIndex(this._galleryIndex, 3)
+            },
+            youtube(currentRemote, $toUse) {
+                this._showYoutubeVideo(currentRemote, $toUse);
+            },
+            vimeo(currentRemote, $toUse) {
+                var match = /(?:www\.)?vimeo\.com\/(?:clip:)?(\d+)/i.exec(currentRemote)
+                this._showVimeoVideo(match[1], $toUse);
+            },
+            instagram(currentRemote, $toUse) {
+                this._showInstagramVideo(this._getInstagramId(currentRemote), $toUse);
+            },
+            media(currentRemote, $toUse) {
+                this._showHtml5Media(currentRemote, $toUse);
+            }
+        }
 	}
 
 	class Lightbox {
@@ -74,6 +100,13 @@ const Lightbox = (($) => {
 			this._wantedHeight = 0
 			this._touchstartX = 0
 			this._touchendX = 0
+            
+            if(config.detectType) {
+                this._config.detectType = $.extend({}, Default.detectType, config.detectType)
+            }
+            if(config.renderType) {
+                this._config.renderType = $.extend({}, Default.renderType, config.renderType)
+            }
 
 			this._modalId = `ekkoLightbox-${Math.floor((Math.random() * 1000) + 1)}`;
 			this._$element = $element instanceof jQuery ? $element : $($element)
@@ -252,19 +285,22 @@ const Lightbox = (($) => {
 		_detectRemoteType(src, type) {
 
 			type = type || false;
-
-			if(!type && this._isImage(src))
-				type = 'image';
-			if(!type && this._getYoutubeId(src))
-				type = 'youtube';
-			if(!type && this._getVimeoId(src))
-				type = 'vimeo';
-			if(!type && this._getInstagramId(src))
-				type = 'instagram';
-			if(type == 'audio' || type == 'video' || (!type && this._isMedia(src)))
-				type = 'media';
-			if(!type || ['image', 'youtube', 'vimeo', 'instagram', 'media', 'url'].indexOf(type) < 0)
+            const types = Object.keys(this._config.detectType)
+            
+            if(!type) {
+                for(let idx = 0; idx < types.length; idx++) {
+                    if(this._config.detectType[types[idx]](src)) {
+                        type = types[idx]
+                        break;
+                    }
+                }
+            }
+            if(type === 'audio' || type === 'video') {
+                type = 'media'
+            }
+			if(!type || types.indexOf(type) < 0) {
 				type = 'url';
+            }
 
 			return type;
 		}
@@ -317,30 +353,16 @@ const Lightbox = (($) => {
 			let currentRemote = this._$element.attr('data-remote') || this._$element.attr('href')
 			let currentType = this._detectRemoteType(currentRemote, this._$element.attr('data-type') || false)
 
-			if(['image', 'youtube', 'vimeo', 'instagram', 'media', 'url'].indexOf(currentType) < 0)
+            const types = Object.keys(this._config.renderType);
+            types.push('url');
+			if(types.indexOf(currentType) < 0)
 				return this._error(this._config.strings.type)
 
-			switch(currentType) {
-				case 'image':
-					this._preloadImage(currentRemote, $toUse)
-					this._preloadImageByIndex(this._galleryIndex, 3)
-					break;
-				case 'youtube':
-					this._showYoutubeVideo(currentRemote, $toUse);
-					break;
-				case 'vimeo':
-					this._showVimeoVideo(this._getVimeoId(currentRemote), $toUse);
-					break;
-				case 'instagram':
-					this._showInstagramVideo(this._getInstagramId(currentRemote), $toUse);
-					break;
-				case 'media':
-					this._showHtml5Media(currentRemote, $toUse);
-					break;
-				default: // url
-					this._loadRemoteContent(currentRemote, $toUse);
-					break;
-			}
+            if(currentType === 'url') {
+                this._loadRemoteContent(currentRemote, $toUse);
+            } else {
+                this._config.renderType[currentType].call(this, currentRemote, $toUse);
+            }
 
 			return this;
 		}

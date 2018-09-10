@@ -6,6 +6,7 @@ const Lightbox = (($) => {
 	const Default = {
 		title: '',
 		footer: '',
+        gallerySelector: null,
 		maxWidth: 9999,
 		maxHeight: 9999,
 		showArrows: true, //display the left / right arrows or not
@@ -139,6 +140,10 @@ const Lightbox = (($) => {
 			this._galleryName = this._$element.data('gallery')
 			if (this._galleryName) {
 				this._$galleryItems = $(document.body).find(`*[data-gallery="${this._galleryName}"]`)
+            } else if(this._config.gallerySelector) {
+                this._$galleryItems = $(document.body).find(this._config.gallerySelector)
+            }
+            if(this._$galleryItems) {
 				this._galleryIndex = this._$galleryItems.index(this._$element)
 				$(document).on('keydown.ekkoLightbox', this._navigationalBinder.bind(this))
 
@@ -167,7 +172,7 @@ const Lightbox = (($) => {
 			})
 			.on('hide.bs.modal', this._config.onHide.bind(this))
 			.on('hidden.bs.modal', () => {
-				if (this._galleryName) {
+				if (this._galleryName || this._config.gallerySelector) {
 					$(document).off('keydown.ekkoLightbox')
 					$(window).off('resize.ekkoLightbox')
 				}

@@ -5,6 +5,10 @@ A lightbox module for Bootstrap that supports images, YouTube videos, and galler
 
 See the github page for docs: http://ashleydw.github.io/lightbox
 
+Branch changes
+========
+This branch opens up the detection and rendering, making it possible to add custom rendering.
+
 Contributing
 ----
 Instead of modifying the /dist/*.js JavaScript files directly, you should instead modify the ekko-lightbox.js file and run the grunt task.
